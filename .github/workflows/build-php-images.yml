@@ -30,6 +30,8 @@ jobs:
         docker build .
         -t michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
         -t michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+        -t ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
+        -t ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
         --build-arg PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
 
     # Step 2: Test the docker image
@@ -38,10 +40,14 @@ jobs:
         docker run michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} bash -c './start-services && echo "Services started. Now trying to shut down" && ./stop-services && cat /var/log/supervisord.log && sleep 10 && ./start-services && sleep 10'
 
     # Step 3: Upload the images to Docker Hub.
-    - name: Docker hub login
-      if: github.ref == 'refs/heads/main'
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
     - name: Push the image to Docker hub
       if: github.ref == 'refs/heads/main'
-      run: docker push michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+      run: |
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        docker push michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+
+    - name: Push the image to ghcr.io
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        docker push ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
