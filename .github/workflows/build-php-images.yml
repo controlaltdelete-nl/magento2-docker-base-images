@@ -13,6 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
+          - { PHP_VERSION: "8.5", PHP_VERSION_FPM: php85-fpm }
           - { PHP_VERSION: "8.4", PHP_VERSION_FPM: php84-fpm }
           - { PHP_VERSION: "8.3", PHP_VERSION_FPM: php83-fpm }
           - { PHP_VERSION: "8.2", PHP_VERSION_FPM: php82-fpm }
