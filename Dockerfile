@@ -92,6 +92,9 @@ RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/superv
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install -b analysis-icu && \
     /usr/share/elasticsearch/bin/elasticsearch-plugin install -b analysis-phonetic
 
+# Quiet Elasticsearch logs (reduce stdout noise)
+RUN sed -i 's/^rootLogger.level *=.*/rootLogger.level = warn/' /etc/elasticsearch/log4j2.properties
+
 # Let MySQL listen on all interfaces
 RUN sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
 
