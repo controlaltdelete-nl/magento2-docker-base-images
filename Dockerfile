@@ -48,8 +48,14 @@ COPY templates/supervisord/redis.conf /etc/supervisor/conf.d/redis.conf
 # ----------------------------------------------------------------
 # Install the stack
 # ----------------------------------------------------------------
+# opcache is bundled with PHP 8.5+, so only install it for earlier versions
 RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/supervisor/conf.d/php-fpm.conf && \
     mkdir -p /run/php && \
+    if [ "$(printf '%s\n' "8.5" "$PHP_VERSION" | sort -V | head -n1)" = "8.5" ]; then \
+        OPCACHE_PKG=""; \
+    else \
+        OPCACHE_PKG="php${PHP_VERSION}-opcache"; \
+    fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
         # PHP core + typical Magento extensions
@@ -66,7 +72,7 @@ RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/superv
         php${PHP_VERSION}-mysqli \
         php${PHP_VERSION}-xml \
         php${PHP_VERSION}-zip \
-        php${PHP_VERSION}-opcache \
+        $OPCACHE_PKG \
         php${PHP_VERSION}-soap \
         php${PHP_VERSION}-ftp \
         php${PHP_VERSION}-xsl \
