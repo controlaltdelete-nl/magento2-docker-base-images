@@ -5,6 +5,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Allow PHP version override at build time:  docker build --build-arg PHP_VERSION=7.4 .
 ARG PHP_VERSION=8.2
 
+LABEL org.opencontainers.image.description="Magento 2 base image with PHP, MySQL, Elasticsearch, and Redis for CI/CD pipelines"
+LABEL org.opencontainers.image.source="https://github.com/controlaltdelete-nl/magento2-docker-base-images"
+
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
     # keep the daemons quiet(er)
