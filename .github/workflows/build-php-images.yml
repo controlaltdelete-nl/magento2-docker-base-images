@@ -39,6 +39,7 @@ jobs:
     - name: Test that the image is working
       run: |
         docker run -v ${{ github.workspace }}/tests:/tests \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
           michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
@@ -46,6 +47,7 @@ jobs:
       run: |
         docker run -v ${{ github.workspace }}/tests:/tests \
           -e ENABLE_VARNISH=true \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
           michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
