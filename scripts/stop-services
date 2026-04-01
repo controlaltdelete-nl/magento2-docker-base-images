@@ -3,6 +3,9 @@
 set -e
 
 echo "Stopping services..."
+if [ "$ENABLE_VARNISH" = "true" ]; then
+  /usr/bin/supervisorctl stop varnish
+fi
 /usr/bin/supervisorctl stop elasticsearch
 sleep 5
 /usr/bin/supervisorctl shutdown

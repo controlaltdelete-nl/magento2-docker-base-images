@@ -47,6 +47,7 @@ COPY templates/supervisord/elasticsearch.conf /etc/supervisor/conf.d/elasticsear
 COPY templates/supervisord/mysql.conf /etc/supervisor/conf.d/mysql.conf
 COPY templates/supervisord/php-fpm.conf /etc/supervisor/conf.d/php-fpm.conf
 COPY templates/supervisord/redis.conf /etc/supervisor/conf.d/redis.conf
+COPY templates/supervisord/varnish.conf /etc/supervisor/conf.d/varnish.conf
 
 # ----------------------------------------------------------------
 # Install the stack
@@ -85,6 +86,7 @@ RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/superv
         mysql-server \
         redis-server \
         elasticsearch \
+        varnish \
         # misc
         tzdata && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -94,6 +96,9 @@ RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install -b analysis-icu &&
 
 # Quiet Elasticsearch logs (reduce stdout noise)
 RUN sed -i 's/^rootLogger.level *=.*/rootLogger.level = warn/' /etc/elasticsearch/log4j2.properties
+
+# Varnish default VCL
+COPY templates/varnish/default.vcl /etc/varnish/default.vcl
 
 # Let MySQL listen on all interfaces
 RUN sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
@@ -154,7 +159,7 @@ COPY scripts/start-services start-services
 COPY scripts/stop-services stop-services
 COPY templates/memory-limit-php.ini /usr/local/etc/php/conf.d/memory-limit-php.ini
 
-EXPOSE 9000 3306 9200 6379 80
+EXPOSE 9000 3306 9200 6379 6081 80
 CMD ["/usr/bin/supervisord", "-n"]
 
 RUN mkdir -p /data

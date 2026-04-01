@@ -69,3 +69,10 @@ if [ $count -eq $retries ]; then
   cat /var/log/elasticsearch/elasticsearch.log
   echo "Could not connect to Elasticsearch after $retries retries."
 fi
+
+# Optionally start Varnish
+if [ "$ENABLE_VARNISH" = "true" ]; then
+  echo "Starting Varnish..."
+  /usr/bin/supervisorctl start varnish
+  echo "Varnish is available on port 6081."
+fi
