@@ -17,30 +17,31 @@ ENV LANG=en_US.UTF-8 \
 ENV CI=true
 ENV COMPOSER_VERSION=2
 
+# Install base packages, add third-party repos, then remove build-only dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         lsb-release ca-certificates curl wget gnupg2 software-properties-common \
-        supervisor openjdk-17-jdk apt-transport-https locales \
+        supervisor openjdk-17-jre-headless apt-transport-https locales \
         unzip zip git jq patch ssh-client vim rsync && \
     locale-gen en_US.UTF-8 && \
-    update-locale LANG=en_US.UTF-8
-
-# PHP (Ondřej Surý PPA – gives every version 7.2-8.4)  :contentReference[oaicite:0]{index=0}
-RUN add-apt-repository -y ppa:ondrej/php
-
-# Elasticsearch APT repo and key  :contentReference[oaicite:1]{index=1}
-RUN wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch \
+    update-locale LANG=en_US.UTF-8 && \
+    # PHP (Ondřej Surý PPA)
+    add-apt-repository -y ppa:ondrej/php && \
+    # Elasticsearch APT repo and key
+    wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch \
         | gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] \
         https://artifacts.elastic.co/packages/7.x/apt stable main" \
-        | tee /etc/apt/sources.list.d/elastic-7.x.list
-
-# Redis official repo & key (for 7.x)  :contentReference[oaicite:2]{index=2}
-RUN curl -fsSL https://packages.redis.io/gpg | \
+        | tee /etc/apt/sources.list.d/elastic-7.x.list && \
+    # Redis official repo & key (for 7.x)
+    curl -fsSL https://packages.redis.io/gpg | \
         gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] \
         https://packages.redis.io/deb $(lsb_release -cs) main" \
-        | tee /etc/apt/sources.list.d/redis.list
+        | tee /etc/apt/sources.list.d/redis.list && \
+    # Remove packages only needed for repo setup
+    apt-get purge -y --auto-remove gnupg2 software-properties-common && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Supervisord
 COPY templates/supervisord.conf /etc/supervisor/supervisord.conf
@@ -129,7 +130,9 @@ RUN mkdir -p $NVM_DIR && \
     nvm alias default $NODE_VERSION && \
     nvm use default && \
     ln -s "$(dirname "$(which node)")" "$NVM_DIR/current" && \
-    node --version && npm --version
+    node --version && npm --version && \
+    # Clean up nvm download cache
+    rm -rf "$NVM_DIR/.cache"
 
 # Make node/npm available in PATH for non-interactive shells
 ENV PATH="$NVM_DIR/current:$PATH"
