@@ -99,6 +99,8 @@ echo "== Node.js =="
 
 assert "Node.js is installed" node --version
 assert_contains "Node.js major version is 20" "v20\." node --version
+assert "nvm is installed" bash -c '. /usr/local/nvm/nvm.sh && nvm --version'
+assert_contains "nvm can switch Node version" "v18\." bash -c '. /usr/local/nvm/nvm.sh && nvm install 18 --no-progress > /dev/null 2>&1 && node --version'
 
 # ----------------------------------------------------------------
 # Magerun

@@ -4,6 +4,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Allow PHP version override at build time:  docker build --build-arg PHP_VERSION=7.4 .
 ARG PHP_VERSION=8.2
+ARG NODE_VERSION=20
 
 LABEL org.opencontainers.image.description="Magento 2 base image with PHP, MySQL, Elasticsearch, and Redis for CI/CD pipelines"
 LABEL org.opencontainers.image.source="https://github.com/controlaltdelete-nl/magento2-docker-base-images"
@@ -119,11 +120,18 @@ RUN getent group elasticsearch || groupadd --system elasticsearch && \
     id -u elasticsearch &>/dev/null || useradd --system -g elasticsearch elasticsearch && \
     chown -R elasticsearch:elasticsearch /var/lib/elasticsearch /var/log/elasticsearch
 
-# Install Node 20
-RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    node --version && \
-    npm --version
+# Install Node via nvm (allows switching versions at runtime with: . "$NVM_DIR/nvm.sh" && nvm install <version>)
+ENV NVM_DIR=/usr/local/nvm
+RUN mkdir -p $NVM_DIR && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
+    . "$NVM_DIR/nvm.sh" && \
+    nvm install $NODE_VERSION && \
+    nvm alias default $NODE_VERSION && \
+    nvm use default && \
+    node --version && npm --version
+
+# Make node/npm available in PATH for non-interactive shells
+ENV PATH="$NVM_DIR/versions/node/v${NODE_VERSION}/bin:$PATH"
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
