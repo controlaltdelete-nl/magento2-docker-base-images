@@ -128,10 +128,11 @@ RUN mkdir -p $NVM_DIR && \
     nvm install $NODE_VERSION && \
     nvm alias default $NODE_VERSION && \
     nvm use default && \
+    ln -s "$(dirname "$(which node)")" "$NVM_DIR/current" && \
     node --version && npm --version
 
 # Make node/npm available in PATH for non-interactive shells
-ENV PATH="$NVM_DIR/versions/node/v${NODE_VERSION}/bin:$PATH"
+ENV PATH="$NVM_DIR/current:$PATH"
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
