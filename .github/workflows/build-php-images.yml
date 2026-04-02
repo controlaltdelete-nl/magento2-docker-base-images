@@ -25,15 +25,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # Step 1: Build the docker image
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Step 1: Build the docker image (load into local docker for testing)
     - name: Build the Docker image
-      run:
-        docker build .
-        -t michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-        -t michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
-        -t ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-        -t ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
-        --build-arg PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        load: true
+        tags: |
+          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
+          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+        build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     # Step 2: Test the docker image
     - name: Test that the image is working
@@ -51,17 +57,32 @@ jobs:
           michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
-    # Step 3: Upload the images to Docker Hub.
-    - name: Push the image to Docker hub
+    # Step 3: Push images (single push per registry, avoids duplicate untagged entries)
+    - name: Login to Docker Hub
       if: github.ref == 'refs/heads/main'
-      run: |
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        docker push michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-        docker push michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Push the image to ghcr.io
+    - name: Login to ghcr.io
       if: github.ref == 'refs/heads/main'
-      run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker push ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-        docker push ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push images
+      if: github.ref == 'refs/heads/main'
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: |
+          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
+          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+        build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
+        cache-from: type=gha
