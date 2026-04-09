@@ -86,3 +86,17 @@ jobs:
           ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
         build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
         cache-from: type=gha
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      packages: write
+    steps:
+    - name: Delete untagged images
+      uses: actions/delete-package-versions@v5
+      with:
+        package-name: magento2-docker-base-images/magento2-base-image
+        package-type: container
+        delete-only-untagged-versions: true
