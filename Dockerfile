@@ -171,7 +171,7 @@ COPY scripts/start-services start-services
 COPY scripts/stop-services stop-services
 COPY templates/memory-limit-php.ini /usr/local/etc/php/conf.d/memory-limit-php.ini
 
-EXPOSE 9000 3306 9200 6379 6081 80
+EXPOSE 9000 3306 9200 6379 80
 CMD ["/usr/bin/supervisord", "-n"]
 
 RUN mkdir -p /data

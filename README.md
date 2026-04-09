@@ -90,7 +90,7 @@ Node.js is installed via nvm. To use a different version:
 | 3306 | MySQL |
 | 9200 | Elasticsearch |
 | 6379 | Redis |
-| 6081 | Varnish |
+| 80 | Varnish |
 | 80 | HTTP |
 
 ## Building Locally
