@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.source="https://github.com/controlaltdelete-nl/ma
 ENV LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
     # keep the daemons quiet(er)
-    ES_JAVA_OPTS="-Xms512m -Xmx512m"
+    ES_JAVA_OPTS="-Xms256m -Xmx256m"
 
 ENV CI=true
 ENV COMPOSER_VERSION=2
