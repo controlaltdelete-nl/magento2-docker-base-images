@@ -107,8 +107,9 @@ COPY --chown=root:elasticsearch templates/elasticsearch/jvm.options.d/gc.options
 # Varnish default VCL
 COPY templates/varnish/default.vcl /etc/varnish/default.vcl
 
-# Let MySQL listen on all interfaces
-RUN sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
+# Let MySQL listen on all interfaces and disable binlog (not needed in CI)
+RUN sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf && \
+    printf '\n[mysqld]\nskip-log-bin\n' >> /etc/mysql/mysql.conf.d/mysqld.cnf
 
 # Create MySQL root-password & basic secure settings (no interactive prompt)
 RUN service mysql start && \
