@@ -1,0 +1,15 @@
+# Paths from the Debian package defaults
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+# Skip the ~3s cluster-formation wait and bootstrap checks
+discovery.type: single-node
+
+# Don't try to download GeoIP DBs on startup (offline/CI containers stall 20-40s otherwise)
+ingest.geoip.downloader.enabled: false
+
+# Disable X-Pack features we don't use to cut plugin init time
+xpack.ml.enabled: false
+xpack.monitoring.collection.enabled: false
+xpack.watcher.enabled: false
+xpack.security.enabled: false

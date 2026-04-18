@@ -99,6 +99,11 @@ RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install -b analysis-icu &&
 # Quiet Elasticsearch logs (reduce stdout noise)
 RUN sed -i 's/^rootLogger.level *=.*/rootLogger.level = warn/' /etc/elasticsearch/log4j2.properties
 
+# Elasticsearch startup tuning: single-node discovery, GeoIP download off,
+# unused X-Pack features off, Serial GC for the 256m heap.
+COPY --chown=root:elasticsearch templates/elasticsearch/elasticsearch.yml /etc/elasticsearch/elasticsearch.yml
+COPY --chown=root:elasticsearch templates/elasticsearch/jvm.options.d/gc.options /etc/elasticsearch/jvm.options.d/gc.options
+
 # Varnish default VCL
 COPY templates/varnish/default.vcl /etc/varnish/default.vcl
 

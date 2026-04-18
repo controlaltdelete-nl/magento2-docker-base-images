@@ -1,0 +1,4 @@
+# Serial GC starts faster than G1 for small (<1GB) heaps.
+# Disable G1 first (stock jvm.options enables it on JDK 14+) then select Serial.
+-XX:-UseG1GC
+-XX:+UseSerialGC
