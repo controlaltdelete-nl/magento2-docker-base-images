@@ -25,6 +25,7 @@ docker pull ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-bas
 ## What's Included
 
 - **PHP** (with FPM) and common Magento extensions (bcmath, gd, intl, mbstring, mysql, xml, zip, soap, xsl, etc.)
+- **nginx** serving PHP through PHP-FPM (replaces the need for the PHP built-in dev server)
 - **MySQL** with a pre-configured `magento` database and user
 - **Elasticsearch 7.x** with ICU and phonetic analysis plugins
 - **Redis**
@@ -62,10 +63,42 @@ docker run -it -v $(pwd):/data \
 
 All services are managed by Supervisord. Use the helper scripts in the container:
 
-- `./start-services` — start MySQL, Elasticsearch, Redis, and PHP-FPM
+- `./start-services` — start MySQL, Elasticsearch, Redis, PHP-FPM, and nginx
 - `./stop-services` — stop all services
 
 Set `ENABLE_VARNISH=true` as an environment variable to also start Varnish.
+
+## Web Server
+
+nginx serves PHP through PHP-FPM and runs by default. The shipped config is a generic
+front-controller (`try_files` to `index.php`, fastcgi to PHP-FPM on `127.0.0.1:9000`).
+
+| Env var | Default | Effect |
+|---------|---------|--------|
+| `NGINX_DOCROOT` | `/data` | Document root nginx serves |
+| `PHP_FPM_MAX_CHILDREN` | `4` | Caps PHP-FPM worker count (memory bounding) |
+| `ENABLE_VARNISH` | unset | When `true`, Varnish takes `:80` and nginx moves to `:8080` behind it |
+
+PHP-FPM runs an `ondemand` pool with a low `pm.max_children` so the image stays within
+memory limits in CI (preventing OOM). Raise or lower it with `PHP_FPM_MAX_CHILDREN`.
+
+### Magento downstream images
+
+For a Magento app, activate the bundled wrapper that serves `pub/` via Magento's own
+`nginx.conf.sample`:
+
+```dockerfile
+FROM ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image:8.4
+# Magento app lives at /data, with its nginx.conf.sample present
+RUN cp /etc/nginx/available/magento.conf /etc/nginx/conf.d/default.conf
+```
+
+The base ships an `upstream fastcgi_backend` (which the Magento sample expects) and the
+wrapper sets `$MAGE_ROOT`, `$MAGE_MODE`, and the multi-store run variables. Keep the
+wrapper's literal `listen 80;` so the Varnish port-switch keeps working. This replaces the
+older `php -S` dev server: drop the `php -S` Supervisord program and any custom
+`0.0.0.0:80 -> :8080` sed in your entrypoint, since the base `start-services` now handles
+the nginx port-switch when `ENABLE_VARNISH=true`.
 
 ## Pre-configured Databases
 
@@ -90,8 +123,7 @@ Node.js is installed via nvm. To use a different version:
 | 3306 | MySQL |
 | 9200 | Elasticsearch |
 | 6379 | Redis |
-| 80 | Varnish |
-| 80 | HTTP |
+| 80 | nginx (Varnish when `ENABLE_VARNISH=true`, with nginx behind it on 8080) |
 
 ## Building Locally
 
