@@ -50,6 +50,7 @@ COPY templates/supervisord/mysql.conf /etc/supervisor/conf.d/mysql.conf
 COPY templates/supervisord/php-fpm.conf /etc/supervisor/conf.d/php-fpm.conf
 COPY templates/supervisord/redis.conf /etc/supervisor/conf.d/redis.conf
 COPY templates/supervisord/varnish.conf /etc/supervisor/conf.d/varnish.conf
+COPY templates/supervisord/nginx.conf /etc/supervisor/conf.d/nginx.conf
 
 # ----------------------------------------------------------------
 # Install the stack
@@ -89,8 +90,10 @@ RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/superv
         redis-server \
         elasticsearch \
         varnish \
+        nginx-light \
         # misc
         tzdata && \
+    rm -f /etc/nginx/sites-enabled/default && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install -b analysis-icu && \
@@ -101,6 +104,16 @@ RUN sed -i 's/^rootLogger.level *=.*/rootLogger.level = warn/' /etc/elasticsearc
 
 # Varnish default VCL
 COPY templates/varnish/default.vcl /etc/varnish/default.vcl
+
+# nginx: generic front-controller active by default; fastcgi_backend upstream and the
+# Magento wrapper (shipped inactive under available/) support downstream Magento images
+COPY templates/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY templates/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY templates/nginx/fastcgi_backend.conf /etc/nginx/conf.d/fastcgi_backend.conf
+COPY templates/nginx/magento.conf /etc/nginx/available/magento.conf
+
+# Bound php-fpm worker memory to prevent OOM (overrides the [www] pool defaults)
+COPY templates/php-fpm/zz-magento.conf /etc/php/${PHP_VERSION}/fpm/pool.d/zz-magento.conf
 
 # Let MySQL listen on all interfaces
 RUN sed -i 's/^bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf

@@ -57,6 +57,15 @@ jobs:
           michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
+    - name: Test nginx docroot and php-fpm overrides
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e NGINX_DOCROOT=/custom-docroot \
+          -e PHP_FPM_MAX_CHILDREN=2 \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          bash -c './start-services && /tests/run-tests.sh'
+
     # Step 3: Push images (single push per registry, avoids duplicate untagged entries)
     - name: Login to Docker Hub
       if: github.ref == 'refs/heads/main'
