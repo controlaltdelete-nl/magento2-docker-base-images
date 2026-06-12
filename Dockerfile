@@ -56,7 +56,9 @@ COPY templates/supervisord/nginx.conf /etc/supervisor/conf.d/nginx.conf
 # Install the stack
 # ----------------------------------------------------------------
 # opcache is bundled with PHP 8.5+, so only install it for earlier versions
-RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/supervisor/conf.d/php-fpm.conf && \
+# -R lets the [www] pool run its workers as root, matching the privilege level of the
+# old PHP built-in server so root-owned /data stays writable for the webserver
+RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F -R|" /etc/supervisor/conf.d/php-fpm.conf && \
     mkdir -p /run/php && \
     if [ "$(printf '%s\n' "8.5" "$PHP_VERSION" | sort -V | head -n1)" = "8.5" ]; then \
         OPCACHE_PKG=""; \
@@ -94,6 +96,7 @@ RUN sed -i "s|__PHP_FPM_COMMAND__|/usr/sbin/php-fpm$PHP_VERSION -F|" /etc/superv
         # misc
         tzdata && \
     rm -f /etc/nginx/sites-enabled/default && \
+    rm -f /etc/php/${PHP_VERSION}/fpm/pool.d/www.conf && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install -b analysis-icu && \
@@ -112,7 +115,7 @@ COPY templates/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY templates/nginx/fastcgi_backend.conf /etc/nginx/conf.d/fastcgi_backend.conf
 COPY templates/nginx/magento.conf /etc/nginx/available/magento.conf
 
-# Bound php-fpm worker memory to prevent OOM (overrides the [www] pool defaults)
+# The only [www] pool (stock www.conf is removed above): root workers, bounded count
 COPY templates/php-fpm/zz-magento.conf /etc/php/${PHP_VERSION}/fpm/pool.d/zz-magento.conf
 
 # Let MySQL listen on all interfaces

@@ -169,6 +169,10 @@ assert_contains "Magento wrapper includes nginx.conf.sample" "include /data/ngin
 # ----------------------------------------------------------------
 echo "== php-fpm pool =="
 
+assert "stock www-data pool is removed" bash -c '! compgen -G "/etc/php/*/fpm/pool.d/www.conf"'
+assert_contains "php-fpm pool user is root" "user = root" cat /etc/php/*/fpm/pool.d/zz-magento.conf
+assert_contains "php-fpm pool group is root" "group = root" cat /etc/php/*/fpm/pool.d/zz-magento.conf
+assert_contains "php-fpm is allowed to run as root (-R)" "\-R" cat /etc/supervisor/conf.d/php-fpm.conf
 assert_contains "php-fpm pool listens on TCP 127.0.0.1:9000" "listen = 127.0.0.1:9000" cat /etc/php/*/fpm/pool.d/zz-magento.conf
 assert_contains "php-fpm pool uses pm = ondemand" "pm = ondemand" cat /etc/php/*/fpm/pool.d/zz-magento.conf
 assert_contains "php-fpm pool sets a process idle timeout" "pm.process_idle_timeout" cat /etc/php/*/fpm/pool.d/zz-magento.conf
@@ -194,6 +198,7 @@ mkdir -p "$SERVE_DOCROOT"
 echo '<?php echo "nginx-ok";' > "$SERVE_DOCROOT/index.php"
 
 assert_contains "nginx serves PHP over HTTP on port 80" "nginx-ok" curl_retry http://localhost/
+assert "php-fpm workers run as root" bash -c 'curl -s http://localhost/ > /dev/null; ps -eo user=,args= | grep "php-fpm: pool www" | grep -q "^root"'
 
 if [ "$ENABLE_VARNISH" = "true" ]; then
   assert_contains "nginx listens on 8080 when Varnish is enabled" "listen 8080" cat /etc/nginx/conf.d/default.conf
