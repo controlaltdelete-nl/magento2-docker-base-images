@@ -33,7 +33,7 @@ fi
 
 if [ "$ENABLE_MAILPIT" = "true" ]; then
   for dir in /etc/php/*/fpm/conf.d /etc/php/*/cli/conf.d; do
-    printf 'sendmail_path = "/usr/local/bin/mailpit sendmail -S 127.0.0.1:1025"\n' > "${dir}/zz-mailpit-sendmail.ini"
+    printf 'sendmail_path = "/usr/local/bin/mailpit sendmail -t -S 127.0.0.1:1025"\n' > "${dir}/zz-mailpit-sendmail.ini"
   done
 fi
 
