@@ -10,7 +10,7 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
   `NODE_VERSION` build args. Installs the full stack, configures MySQL/Elasticsearch,
   installs Composer, Node (via nvm), and n98-magerun2.
 - `scripts/` — runtime helpers copied into the image WORKDIR (`/data`):
-  - `start-services` — start MySQL, Elasticsearch, Redis, PHP-FPM (and Varnish when `ENABLE_VARNISH=true`)
+  - `start-services` — start MySQL, Elasticsearch, Redis, PHP-FPM (and Varnish when `ENABLE_VARNISH=true`, and Mailpit when `ENABLE_MAILPIT=true`)
   - `stop-services` — stop all services
   - `retry` — retry wrapper for flaky startup steps
 - `templates/` — service configuration baked into the image:
@@ -36,7 +36,7 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
   inside the `Dockerfile`.
 - Pre-configured databases: `magento` / `magento-test`, user/pass `magento` / `password`
   and `magento-test` / `password`.
-- Exposed ports: 9000 (PHP-FPM), 3306 (MySQL), 9200 (Elasticsearch), 6379 (Redis), 80 (Varnish/HTTP).
+- Exposed ports: 9000 (PHP-FPM), 3306 (MySQL), 9200 (Elasticsearch), 6379 (Redis), 80 (Varnish/HTTP), 1025 (Mailpit SMTP, opt-in), 8025 (Mailpit web UI/API, opt-in).
 - Node.js is installed via nvm; runtime version switching is supported.
 
 ## Current Focus

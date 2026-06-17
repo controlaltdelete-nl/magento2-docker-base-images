@@ -127,6 +127,31 @@ echo "== Magerun =="
 assert "Magerun is installed" n98-magerun2 --version
 
 # ----------------------------------------------------------------
+# Mailpit
+# ----------------------------------------------------------------
+echo "== Mailpit =="
+
+assert "it asserts the mailpit binary is installed and runnable" /usr/local/bin/mailpit version
+assert_contains "it asserts the mailpit supervisord program is shipped with autostart false" "autostart=false" cat /etc/supervisor/conf.d/mailpit.conf
+
+if [ "$ENABLE_MAILPIT" = "true" ]; then
+  assert_contains "it asserts mailpit is RUNNING under supervisord when ENABLE_MAILPIT is true" "RUNNING" supervisorctl status mailpit
+  assert "it asserts the mailpit api answers on port 8025 when enabled" curl -sf http://localhost:8025/readyz
+  assert "it asserts the mailpit smtp port 1025 is listening when enabled" bash -c 'echo > /dev/tcp/127.0.0.1/1025'
+  printf 'Subject: TDD Test\r\nFrom: sender@example.com\r\nTo: recipient@example.com\r\n\r\nTest body\r\n' \
+    | /usr/local/bin/mailpit sendmail -S 127.0.0.1:1025 recipient@example.com > /dev/null 2>&1
+  assert_contains "it asserts a message sent to the smtp port is retrievable via the rest api when enabled" \
+    '"count":' curl_retry http://localhost:8025/api/v1/messages
+  assert_contains "it asserts sendmail_path reported by php -i points at the mailpit shim when enabled" \
+    "mailpit sendmail" php -i
+else
+  assert_contains "it asserts mailpit is not running and sendmail_path is unchanged when ENABLE_MAILPIT is unset" \
+    "STOPPED" supervisorctl status mailpit
+  assert_contains "it asserts mailpit is not running and sendmail_path is unchanged when ENABLE_MAILPIT is unset" \
+    "/usr/sbin/sendmail" php -i
+fi
+
+# ----------------------------------------------------------------
 # Varnish (only when enabled)
 # ----------------------------------------------------------------
 if [ "$ENABLE_VARNISH" = "true" ]; then
@@ -146,6 +171,7 @@ assert "distro default nginx site is removed" bash -c '! test -e /etc/nginx/site
 assert "nginx.conf does not include sites-enabled" bash -c '! grep -q sites-enabled /etc/nginx/nginx.conf'
 assert_contains "nginx.conf includes conf.d" "include /etc/nginx/conf.d" cat /etc/nginx/nginx.conf
 assert_contains "default site passes fastcgi to php-fpm on 9000" "127.0.0.1:9000" cat /etc/nginx/conf.d/default.conf
+# shellcheck disable=SC2016
 assert_contains "default site sets SCRIPT_FILENAME from document_root" 'SCRIPT_FILENAME $document_root' cat /etc/nginx/conf.d/default.conf
 assert_contains "nginx runs under supervisord" "RUNNING" supervisorctl status nginx
 
@@ -179,7 +205,7 @@ assert_contains "php-fpm pool sets a process idle timeout" "pm.process_idle_time
 assert_contains "php-fpm pool recycles workers via max_requests" "pm.max_requests = 500" cat /etc/php/*/fpm/pool.d/zz-magento.conf
 
 if [ -n "$PHP_VERSION" ]; then
-  assert "php-fpm config is valid" /usr/sbin/php-fpm${PHP_VERSION} -t
+  assert "php-fpm config is valid" "/usr/sbin/php-fpm${PHP_VERSION}" -t
 fi
 
 if [ -z "$PHP_FPM_MAX_CHILDREN" ]; then
