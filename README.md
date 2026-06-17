@@ -30,6 +30,7 @@ docker pull ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-bas
 - **Elasticsearch 7.x** with ICU and phonetic analysis plugins
 - **Redis**
 - **Varnish**
+- **Mailpit** (SMTP catcher with web UI and REST API, opt-in)
 - **Composer**
 - **Node.js** (via nvm, default v20)
 - **n98-magerun2**
@@ -63,10 +64,28 @@ docker run -it -v $(pwd):/data \
 
 All services are managed by Supervisord. Use the helper scripts in the container:
 
-- `./start-services` — start MySQL, Elasticsearch, Redis, PHP-FPM, and nginx
+- `./start-services` — start MySQL, Elasticsearch, Redis, PHP-FPM, and nginx; with opt-in services via env vars (see below)
 - `./stop-services` — stop all services
 
 Set `ENABLE_VARNISH=true` as an environment variable to also start Varnish.
+
+Set `ENABLE_MAILPIT=true` as an environment variable to also start Mailpit (see below).
+
+## Mailpit (SMTP Catcher)
+
+Mailpit is bundled but opt-in and off by default. Set `ENABLE_MAILPIT=true` to activate it.
+
+When enabled, `start-services` starts Mailpit and automatically sets PHP's `sendmail_path`
+to the Mailpit sendmail shim. Native PHP `mail()` calls are captured without any app config
+changes. Magento SMTP modules can instead point directly at `localhost:1025`.
+
+Captured mail is available at:
+
+- **Web UI**: `http://localhost:8025`
+- **REST API**: `http://localhost:8025/api/v1/messages`
+
+Storage is in-memory and ephemeral with no authentication, which makes it suitable for CI
+environments. The Mailpit version is pinned via the `MAILPIT_VERSION` build arg (default: v1.30.2).
 
 ## Web Server
 
@@ -78,6 +97,7 @@ front-controller (`try_files` to `index.php`, fastcgi to PHP-FPM on `127.0.0.1:9
 | `NGINX_DOCROOT` | `/data` | Document root nginx serves |
 | `PHP_FPM_MAX_CHILDREN` | `4` | Caps PHP-FPM worker count (memory bounding) |
 | `ENABLE_VARNISH` | unset | When `true`, Varnish takes `:80` and nginx moves to `:8080` behind it |
+| `ENABLE_MAILPIT` | unset | When `true`, starts Mailpit (SMTP catcher) and routes PHP `mail()` through it |
 
 PHP-FPM runs an `ondemand` pool with a low `pm.max_children` so the image stays within
 memory limits in CI (preventing OOM). Raise or lower it with `PHP_FPM_MAX_CHILDREN`.
@@ -124,6 +144,8 @@ Node.js is installed via nvm. To use a different version:
 | 9200 | Elasticsearch |
 | 6379 | Redis |
 | 80 | nginx (Varnish when `ENABLE_VARNISH=true`, with nginx behind it on 8080) |
+| 1025 | Mailpit SMTP (opt-in, when `ENABLE_MAILPIT=true`) |
+| 8025 | Mailpit web UI and REST API (opt-in, when `ENABLE_MAILPIT=true`) |
 
 ## Building Locally
 

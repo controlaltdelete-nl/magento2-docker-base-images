@@ -5,6 +5,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Allow PHP version override at build time:  docker build --build-arg PHP_VERSION=7.4 .
 ARG PHP_VERSION=8.2
 ARG NODE_VERSION=20
+ARG MAILPIT_VERSION=1.30.2
+ARG MAILPIT_SHA256=63b113aa9748adf7091b649ebe02693f99a459000cbe415faa6679f4b39f82cf
 
 LABEL org.opencontainers.image.description="Magento 2 base image with PHP, MySQL, Elasticsearch, and Redis for CI/CD pipelines"
 LABEL org.opencontainers.image.source="https://github.com/controlaltdelete-nl/magento2-docker-base-images"
@@ -51,6 +53,7 @@ COPY templates/supervisord/php-fpm.conf /etc/supervisor/conf.d/php-fpm.conf
 COPY templates/supervisord/redis.conf /etc/supervisor/conf.d/redis.conf
 COPY templates/supervisord/varnish.conf /etc/supervisor/conf.d/varnish.conf
 COPY templates/supervisord/nginx.conf /etc/supervisor/conf.d/nginx.conf
+COPY templates/supervisord/mailpit.conf /etc/supervisor/conf.d/mailpit.conf
 
 # ----------------------------------------------------------------
 # Install the stack
@@ -180,6 +183,16 @@ RUN set -e; \
     ln -s /usr/local/bin/n98-magerun2.phar /usr/local/bin/magerun2 && \
     n98-magerun2 --version
 
+# Install Mailpit (SMTP + web UI for mail testing)
+RUN set -e; \
+    MAILPIT_TARBALL="mailpit-linux-amd64.tar.gz"; \
+    MAILPIT_URL="https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/${MAILPIT_TARBALL}"; \
+    curl -fsSL "$MAILPIT_URL" -o "/tmp/${MAILPIT_TARBALL}" && \
+    echo "${MAILPIT_SHA256}  /tmp/${MAILPIT_TARBALL}" | sha256sum -c - && \
+    tar -xzf "/tmp/${MAILPIT_TARBALL}" -C /usr/local/bin mailpit && \
+    chmod +x /usr/local/bin/mailpit && \
+    rm "/tmp/${MAILPIT_TARBALL}"
+
 WORKDIR /data
 
 COPY scripts/retry retry
@@ -187,7 +200,7 @@ COPY scripts/start-services start-services
 COPY scripts/stop-services stop-services
 COPY templates/memory-limit-php.ini /usr/local/etc/php/conf.d/memory-limit-php.ini
 
-EXPOSE 9000 3306 9200 6379 80
+EXPOSE 9000 3306 9200 6379 80 1025 8025
 CMD ["/usr/bin/supervisord", "-n"]
 
 RUN mkdir -p /data
