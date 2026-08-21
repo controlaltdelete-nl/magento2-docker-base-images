@@ -10,12 +10,20 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
   `NODE_VERSION` build args. Installs the full stack, configures MySQL/Elasticsearch,
   installs Composer, Node (via nvm), and n98-magerun2.
 - `scripts/` — runtime helpers copied into the image WORKDIR (`/data`):
-  - `start-services` — start MySQL, Elasticsearch, Redis, PHP-FPM (and Varnish when `ENABLE_VARNISH=true`, and Mailpit when `ENABLE_MAILPIT=true`)
+  - `start-services` — render nginx/php-fpm config from env vars, then start MySQL,
+    Elasticsearch, Redis, PHP-FPM, and nginx. Opt-ins: `ENABLE_VARNISH=true` (Varnish
+    on :80, nginx to :8080), `ENABLE_MAILPIT=true` (SMTP catcher), `ENABLE_CORS=true`
+    (includes the CORS nginx snippet in the active server blocks)
   - `stop-services` — stop all services
   - `retry` — retry wrapper for flaky startup steps
 - `templates/` — service configuration baked into the image:
   - `supervisord.conf` and `supervisord/*.conf` — one program block per service
   - `elasticsearch/` — `elasticsearch.yml` and JVM GC options
+  - `nginx/` — `nginx.conf`, active `default.conf` front-controller, `fastcgi_backend.conf`
+    upstream, plus inactive snippets under `/etc/nginx/available/`: `magento.conf`
+    (wrapper around Magento's `nginx.conf.sample`) and `cors.conf` (wide-open CORS
+    headers + `OPTIONS` preflight, activated by `ENABLE_CORS=true`)
+  - `php-fpm/zz-magento.conf` — the only pool: root workers, `ondemand`, bounded children
   - `varnish/default.vcl`, `memory-limit-php.ini`
 - `tests/run-tests.sh` — Bash assertion suite run inside the built container
 - `.github/workflows/build-php-images.yml` — matrix build → test → push pipeline
@@ -32,6 +40,9 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
 ## Conventions
 
 - Service config lives in `templates/`, never inlined in the `Dockerfile`.
+- Behavior only some consumers want is opt-in via an `ENABLE_*` env var, off by default
+  (`ENABLE_VARNISH`, `ENABLE_MAILPIT`, `ENABLE_CORS`); defaults must mirror production
+  and never alter observable HTTP behavior for users who did not ask for it.
 - Version-specific behavior (opcache packaging, Magerun phar URL) branches explicitly
   inside the `Dockerfile`.
 - Pre-configured databases: `magento` / `magento-test`, user/pass `magento` / `password`
