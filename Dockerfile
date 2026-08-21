@@ -117,6 +117,7 @@ COPY templates/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY templates/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY templates/nginx/fastcgi_backend.conf /etc/nginx/conf.d/fastcgi_backend.conf
 COPY templates/nginx/magento.conf /etc/nginx/available/magento.conf
+COPY templates/nginx/cors.conf /etc/nginx/available/cors.conf
 
 # The only [www] pool (stock www.conf is removed above): root workers, bounded count
 COPY templates/php-fpm/zz-magento.conf /etc/php/${PHP_VERSION}/fpm/pool.d/zz-magento.conf

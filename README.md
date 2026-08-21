@@ -98,9 +98,23 @@ front-controller (`try_files` to `index.php`, fastcgi to PHP-FPM on `127.0.0.1:9
 | `PHP_FPM_MAX_CHILDREN` | `4` | Caps PHP-FPM worker count (memory bounding) |
 | `ENABLE_VARNISH` | unset | When `true`, Varnish takes `:80` and nginx moves to `:8080` behind it |
 | `ENABLE_MAILPIT` | unset | When `true`, starts Mailpit (SMTP catcher) and routes PHP `mail()` through it |
+| `ENABLE_CORS` | unset | When `true`, nginx sends wide-open CORS headers and answers `OPTIONS` preflights with `204` |
 
 PHP-FPM runs an `ondemand` pool with a low `pm.max_children` so the image stays within
 memory limits in CI (preventing OOM). Raise or lower it with `PHP_FPM_MAX_CHILDREN`.
+
+### CORS (opt-in)
+
+Set `ENABLE_CORS=true` when a test client on another origin (a headless storefront, a
+browser test runner) must call the container. nginx then adds
+`Access-Control-Allow-Origin/Methods/Headers: *` to every response, including static
+files and errors, and short-circuits `OPTIONS` preflights with `204`. This replaces
+patching CORS headers into `pub/index.php` or `phpserver/router.php`.
+
+Off by default: wide-open CORS would distort header assertions, hide missing production
+CORS config, and conflict (duplicate headers) with apps that set their own. One caveat:
+locations in Magento's `nginx.conf.sample` that declare their own `add_header` (the
+static-files block) do not inherit the server-level CORS headers.
 
 ### Magento downstream images
 
