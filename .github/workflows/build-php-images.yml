@@ -65,6 +65,14 @@ jobs:
           michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
+    - name: Test CORS support
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e ENABLE_CORS=true \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          bash -c './start-services && /tests/run-tests.sh'
+
     - name: Test nginx docroot and php-fpm overrides
       run: |
         docker run -v ${{ github.workspace }}/tests:/tests \
