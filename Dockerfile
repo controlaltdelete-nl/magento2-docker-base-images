@@ -163,11 +163,14 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 # Install Magerun2
 # Use https://files.magerun.net/n98-magerun2-7.5.0.phar for PHP 7.4
+# Use https://files.magerun.net/n98-magerun2-9.5.1.phar for PHP 8.1 (10.0.0 requires PHP >= 8.2)
 # Use https://files.magerun.net/n98-magerun2-6.1.1.phar for PHP 7.3
 # Use https://files.magerun.net/n98-magerun2-4.7.0.phar for PHP 7.2
 # Use https://files.magerun.net/n98-magerun-1.103.2.phar for PHP 7.1
 RUN set -e; \
-    if [ "$PHP_VERSION" = "7.4" ]; then \
+    if [ "$PHP_VERSION" = "8.1" ]; then \
+        url="https://files.magerun.net/n98-magerun2-9.5.1.phar"; \
+    elif [ "$PHP_VERSION" = "7.4" ]; then \
         url="https://files.magerun.net/n98-magerun2-7.5.0.phar"; \
     elif [ "$PHP_VERSION" = "7.3" ]; then \
         url="https://files.magerun.net/n98-magerun2-6.1.1.phar"; \
