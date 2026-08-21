@@ -200,6 +200,7 @@ RUN set -e; \
 WORKDIR /data
 
 COPY scripts/retry retry
+COPY scripts/render-config render-config
 COPY scripts/start-services start-services
 COPY scripts/stop-services stop-services
 COPY templates/memory-limit-php.ini /usr/local/etc/php/conf.d/memory-limit-php.ini

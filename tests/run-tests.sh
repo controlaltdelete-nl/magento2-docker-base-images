@@ -243,12 +243,19 @@ echo "== CORS =="
 
 assert "CORS snippet is shipped" test -f /etc/nginx/available/cors.conf
 assert_contains "CORS snippet allows any origin" "Access-Control-Allow-Origin" cat /etc/nginx/available/cors.conf
+assert "render-config is shipped" test -x /data/render-config
 
 if [ "$ENABLE_CORS" = "true" ]; then
   assert_contains "responses carry Access-Control-Allow-Origin" "Access-Control-Allow-Origin: \*" curl -s -i http://localhost/
+  assert "responses carry exactly one Access-Control-Allow-Origin header" \
+    bash -c '[ "$(curl -s -i http://localhost/ | grep -c -i "access-control-allow-origin")" -eq 1 ]'
   assert_contains "preflight OPTIONS returns 204" "204" curl -s -o /dev/null -w "%{http_code}" -X OPTIONS http://localhost/
   assert_contains "preflight carries Access-Control-Allow-Methods" "Access-Control-Allow-Methods: \*" curl -s -i -X OPTIONS http://localhost/
   assert_contains "Magento wrapper includes the CORS snippet" "cors.conf" cat /etc/nginx/available/magento.conf
+  assert "CORS snippet is included exactly once in the active config" \
+    bash -c '[ "$(grep -c "cors.conf" /etc/nginx/conf.d/default.conf)" -eq 1 ]'
+  assert "re-running render-config does not duplicate the CORS snippet" \
+    bash -c '/data/render-config && [ "$(grep -c "cors.conf" /etc/nginx/conf.d/default.conf)" -eq 1 ] && [ "$(grep -c "cors.conf" /etc/nginx/available/magento.conf)" -eq 1 ]'
 else
   assert "responses carry no CORS headers by default" bash -c '! curl -s -i http://localhost/ | grep -q Access-Control-Allow-Origin'
   assert "CORS snippet is inactive by default" bash -c '! grep -q cors.conf /etc/nginx/conf.d/default.conf'

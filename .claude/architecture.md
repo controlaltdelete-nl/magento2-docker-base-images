@@ -10,10 +10,12 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
   `NODE_VERSION` build args. Installs the full stack, configures MySQL/Elasticsearch,
   installs Composer, Node (via nvm), and n98-magerun2.
 - `scripts/` — runtime helpers copied into the image WORKDIR (`/data`):
-  - `start-services` — render nginx/php-fpm config from env vars, then start MySQL,
+  - `start-services` — render config via `render-config`, then start MySQL,
     Elasticsearch, Redis, PHP-FPM, and nginx. Opt-ins: `ENABLE_VARNISH=true` (Varnish
     on :80, nginx to :8080), `ENABLE_MAILPIT=true` (SMTP catcher), `ENABLE_CORS=true`
     (includes the CORS nginx snippet in the active server blocks)
+  - `render-config` — render nginx/php-fpm config from env vars; idempotent because
+    it runs at image build time and again at container boot
   - `stop-services` — stop all services
   - `retry` — retry wrapper for flaky startup steps
 - `templates/` — service configuration baked into the image:
@@ -32,10 +34,12 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
 ## Build and Release Flow
 
 1. CI matrix builds one image per PHP version (7.1–8.5), `fail-fast: false`.
-2. Each image is loaded locally and tested twice: default, then `ENABLE_VARNISH=true`.
-3. On `main`, images are pushed to Docker Hub (`michielgerritsen/magento2-base-image`)
-   and ghcr.io (`ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image`),
-   tagged `<php-version>` and `php<NN>-fpm`.
+2. Each image is loaded locally and tested per variant: default, `ENABLE_VARNISH=true`,
+   `ENABLE_MAILPIT=true`, `ENABLE_CORS=true`, and custom docroot/php-fpm overrides.
+3. On `main`, images are pushed to ghcr.io
+   (`ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image`),
+   tagged `<php-version>` and `php<NN>-fpm`. Docker Hub
+   (`michielgerritsen/magento2-base-image`) is deprecated and no longer updated.
 
 ## Conventions
 
