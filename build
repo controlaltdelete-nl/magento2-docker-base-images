@@ -5,7 +5,7 @@ echo "NOTE: THIS SCRIPT IS FOR DEBUGGING PURPOSES ONLY."
 set -e
 
 # Build the dockerfile with build-arg PHP_VERSION: php82-fpm and name it base-docker-image
-docker build --progress plain --build-arg PHP_VERSION=8.4 -t michielgerritsen/magento2-base-image:php84-fpm -t michielgerritsen/magento2-base-image:php84-fpm-debug .
+docker build --progress plain --build-arg PHP_VERSION=8.4 -t ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image:php84-fpm -t ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image:php84-fpm-debug .
 
 # Run the base-docker-image image and name it base-docker-container
-#docker run -d --name base-docker-container michielgerritsen/magento2-base-image:php82-fpm
+#docker run -d --name base-docker-container ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image:php82-fpm

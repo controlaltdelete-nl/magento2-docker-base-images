@@ -56,7 +56,7 @@ jobs:
 
 ```bash
 docker run -it -v $(pwd):/data \
-  michielgerritsen/magento2-base-image:8.4 \
+  ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image:8.4 \
   bash -c './start-services && bash'
 ```
 

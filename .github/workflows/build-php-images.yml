@@ -35,8 +35,8 @@ jobs:
         context: .
         load: true
         tags: |
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
         build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -46,7 +46,7 @@ jobs:
       run: |
         docker run -v ${{ github.workspace }}/tests:/tests \
           -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
     - name: Test Varnish support
@@ -54,7 +54,7 @@ jobs:
         docker run -v ${{ github.workspace }}/tests:/tests \
           -e ENABLE_VARNISH=true \
           -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
     - name: Test Mailpit support
@@ -62,7 +62,7 @@ jobs:
         docker run -v ${{ github.workspace }}/tests:/tests \
           -e ENABLE_MAILPIT=true \
           -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
     - name: Test CORS support
@@ -70,7 +70,7 @@ jobs:
         docker run -v ${{ github.workspace }}/tests:/tests \
           -e ENABLE_CORS=true \
           -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
     - name: Test nginx docroot and php-fpm overrides
@@ -79,17 +79,10 @@ jobs:
           -e NGINX_DOCROOT=/custom-docroot \
           -e PHP_FPM_MAX_CHILDREN=2 \
           -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
+          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
           bash -c './start-services && /tests/run-tests.sh'
 
     # Step 3: Push images (single push per registry, avoids duplicate untagged entries)
-    - name: Login to Docker Hub
-      if: github.ref == 'refs/heads/main'
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
     - name: Login to ghcr.io
       if: github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
@@ -105,8 +98,6 @@ jobs:
         context: .
         push: true
         tags: |
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-          michielgerritsen/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
           ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
           ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
         build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
