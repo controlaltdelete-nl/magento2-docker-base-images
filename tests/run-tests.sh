@@ -131,7 +131,7 @@ assert "Magerun is installed" n98-magerun2 --version
 # ----------------------------------------------------------------
 echo "== Mailpit =="
 
-assert "it asserts the mailpit binary is installed and runnable" /usr/local/bin/mailpit version
+assert "it asserts the mailpit binary is installed and runnable" /usr/local/bin/mailpit version --no-release-check
 assert_contains "it asserts the mailpit supervisord program is shipped with autostart false" "autostart=false" cat /etc/supervisor/conf.d/mailpit.conf
 
 if [ "$ENABLE_MAILPIT" = "true" ]; then
