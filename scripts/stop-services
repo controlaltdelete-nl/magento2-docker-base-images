@@ -16,5 +16,8 @@ sleep 5
 sleep 20
 echo "Services stopped."
 
-# Wait until all elasticsearch processes are stopped
+# Lucene leaves node.lock and write.lock files behind when Elasticsearch stops.
+# Kept in the image they crash Elasticsearch on the first start of every container
+# ("Underlying file changed by an external force"), so remove them here.
 rm -fv /var/lib/elasticsearch/nodes/*/node.lock
+find /var/lib/elasticsearch -name write.lock -print -delete
