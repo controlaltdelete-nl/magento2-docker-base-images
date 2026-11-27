@@ -7,7 +7,7 @@ MySQL, Elasticsearch, Redis, and Varnish so a pipeline needs only a single conta
 
 - **Base**: Ubuntu 22.04, Supervisord as process manager
 - **Languages**: Bash (scripts), Dockerfile
-- **PHP**: 7.1–8.5, parameterized via `PHP_VERSION` build arg (Ondřej Surý PPA)
+- **PHP**: 7.1–8.5, parameterized via `PHP_VERSION` build arg (Ondřej Surý, packages.sury.org)
 - **Bundled**: MySQL, Elasticsearch 7.x (+icu/+phonetic), Redis, Varnish, Composer, Node (nvm), n98-magerun2
 - **Testing**: custom Bash assertion runner (`tests/run-tests.sh`), run inside the container
 - **Linting**: hadolint (Dockerfile), shellcheck (shell scripts)
