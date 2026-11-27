@@ -6,8 +6,136 @@ on:
   schedule:
     - cron: '0 0 * * 1'
 
+env:
+  IMAGE: ghcr.io/${{ github.repository }}/magento2-base-image
+
 jobs:
+  # Each PHP version is built and tested natively per architecture, then pushed by digest.
+  # The merge job below combines both digests into one multi-arch tag.
   build:
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+          - { PHP_VERSION: "8.5", PHP_VERSION_FPM: php85-fpm }
+          - { PHP_VERSION: "8.4", PHP_VERSION_FPM: php84-fpm }
+          - { PHP_VERSION: "8.3", PHP_VERSION_FPM: php83-fpm }
+          - { PHP_VERSION: "8.2", PHP_VERSION_FPM: php82-fpm }
+          - { PHP_VERSION: "8.1", PHP_VERSION_FPM: php81-fpm }
+          - { PHP_VERSION: "7.4", PHP_VERSION_FPM: php74-fpm }
+          - { PHP_VERSION: "7.3", PHP_VERSION_FPM: php73-fpm }
+          - { PHP_VERSION: "7.2", PHP_VERSION_FPM: php72-fpm }
+          - { PHP_VERSION: "7.1", PHP_VERSION_FPM: php71-fpm }
+        platform:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    env:
+      LOCAL_TAG: magento2-base-image:${{ matrix.cfg.PHP_VERSION }}-${{ matrix.platform.arch }}
+      CACHE_SCOPE: php${{ matrix.cfg.PHP_VERSION }}-${{ matrix.platform.arch }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Step 1: Build the docker image (load into local docker for testing)
+    - name: Build the Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/${{ matrix.platform.arch }}
+        load: true
+        tags: ${{ env.LOCAL_TAG }}
+        build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
+        cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+        cache-to: type=gha,mode=max,scope=${{ env.CACHE_SCOPE }}
+
+    # Step 2: Test the docker image
+    - name: Test that the image is working
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e EXPECTED_ARCH=${{ matrix.platform.arch }} \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          "$LOCAL_TAG" \
+          bash -c './start-services && /tests/run-tests.sh'
+
+    - name: Test Varnish support
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e ENABLE_VARNISH=true \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          "$LOCAL_TAG" \
+          bash -c './start-services && /tests/run-tests.sh'
+
+    - name: Test Mailpit support
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e ENABLE_MAILPIT=true \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          "$LOCAL_TAG" \
+          bash -c './start-services && /tests/run-tests.sh'
+
+    - name: Test CORS support
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e ENABLE_CORS=true \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          "$LOCAL_TAG" \
+          bash -c './start-services && /tests/run-tests.sh'
+
+    - name: Test nginx docroot and php-fpm overrides
+      run: |
+        docker run -v ${{ github.workspace }}/tests:/tests \
+          -e NGINX_DOCROOT=/custom-docroot \
+          -e PHP_FPM_MAX_CHILDREN=2 \
+          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
+          "$LOCAL_TAG" \
+          bash -c './start-services && /tests/run-tests.sh'
+
+    # Step 3: Push this architecture by digest (untagged); the merge job tags it
+    - name: Login to ghcr.io
+      if: github.ref == 'refs/heads/main'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push image by digest
+      id: push
+      if: github.ref == 'refs/heads/main'
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/${{ matrix.platform.arch }}
+        outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+        build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
+        cache-from: type=gha,scope=${{ env.CACHE_SCOPE }}
+
+    - name: Export digest
+      if: github.ref == 'refs/heads/main'
+      env:
+        DIGEST: ${{ steps.push.outputs.digest }}
+      run: |
+        mkdir -p /tmp/digests
+        touch "/tmp/digests/${DIGEST#sha256:}"
+
+    - name: Upload digest
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: digests-${{ matrix.cfg.PHP_VERSION }}-${{ matrix.platform.arch }}
+        path: /tmp/digests/*
+        if-no-files-found: error
+        retention-days: 1
+
+  # Step 4: Combine the amd64 and arm64 digests into the public multi-arch tags.
+  # Runs per PHP version even when another version failed, but only publishes a
+  # version when both of its architectures built and passed.
+  merge:
+    needs: build
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,82 +151,43 @@ jobs:
           - { PHP_VERSION: "7.2", PHP_VERSION_FPM: php72-fpm }
           - { PHP_VERSION: "7.1", PHP_VERSION_FPM: php71-fpm }
     steps:
-    - uses: actions/checkout@v4
+    - name: Download digests
+      uses: actions/download-artifact@v4
+      with:
+        path: /tmp/digests
+        pattern: digests-${{ matrix.cfg.PHP_VERSION }}-*
+        merge-multiple: true
+
+    - name: Require a digest for every architecture
+      working-directory: /tmp/digests
+      run: |
+        count=$(find . -type f | wc -l)
+        if [ "$count" -ne 2 ]; then
+          echo "Expected 2 digests (amd64 + arm64) for PHP ${{ matrix.cfg.PHP_VERSION }}, found ${count}; not publishing."
+          exit 1
+        fi
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    # Step 1: Build the docker image (load into local docker for testing)
-    - name: Build the Docker image
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        load: true
-        tags: |
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
-        build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    # Step 2: Test the docker image
-    - name: Test that the image is working
-      run: |
-        docker run -v ${{ github.workspace }}/tests:/tests \
-          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
-          bash -c './start-services && /tests/run-tests.sh'
-
-    - name: Test Varnish support
-      run: |
-        docker run -v ${{ github.workspace }}/tests:/tests \
-          -e ENABLE_VARNISH=true \
-          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
-          bash -c './start-services && /tests/run-tests.sh'
-
-    - name: Test Mailpit support
-      run: |
-        docker run -v ${{ github.workspace }}/tests:/tests \
-          -e ENABLE_MAILPIT=true \
-          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
-          bash -c './start-services && /tests/run-tests.sh'
-
-    - name: Test CORS support
-      run: |
-        docker run -v ${{ github.workspace }}/tests:/tests \
-          -e ENABLE_CORS=true \
-          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
-          bash -c './start-services && /tests/run-tests.sh'
-
-    - name: Test nginx docroot and php-fpm overrides
-      run: |
-        docker run -v ${{ github.workspace }}/tests:/tests \
-          -e NGINX_DOCROOT=/custom-docroot \
-          -e PHP_FPM_MAX_CHILDREN=2 \
-          -e PHP_VERSION=${{ matrix.cfg.PHP_VERSION }} \
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }} \
-          bash -c './start-services && /tests/run-tests.sh'
-
-    # Step 3: Push images (single push per registry, avoids duplicate untagged entries)
     - name: Login to ghcr.io
-      if: github.ref == 'refs/heads/main'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Push images
-      if: github.ref == 'refs/heads/main'
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        push: true
-        tags: |
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION }}
-          ghcr.io/${{ github.repository }}/magento2-base-image:${{ matrix.cfg.PHP_VERSION_FPM }}
-        build-args: PHP_VERSION=${{ matrix.cfg.PHP_VERSION }}
-        cache-from: type=gha
+    - name: Create and push the multi-arch tags
+      working-directory: /tmp/digests
+      run: |
+        sources=()
+        for digest in *; do
+          sources+=("${IMAGE}@sha256:${digest}")
+        done
+        docker buildx imagetools create \
+          -t "${IMAGE}:${{ matrix.cfg.PHP_VERSION }}" \
+          -t "${IMAGE}:${{ matrix.cfg.PHP_VERSION_FPM }}" \
+          "${sources[@]}"
+
+    - name: Inspect the published image
+      run: docker buildx imagetools inspect "${IMAGE}:${{ matrix.cfg.PHP_VERSION }}"

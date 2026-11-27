@@ -52,6 +52,14 @@ curl_retry() {
 }
 
 # ----------------------------------------------------------------
+# Platform (EXPECTED_ARCH is set by CI per runner)
+# ----------------------------------------------------------------
+if [ -n "$EXPECTED_ARCH" ]; then
+  echo "== Platform =="
+  assert_contains "it runs on the expected architecture $EXPECTED_ARCH" "$EXPECTED_ARCH" dpkg --print-architecture
+fi
+
+# ----------------------------------------------------------------
 # PHP
 # ----------------------------------------------------------------
 echo "== PHP =="

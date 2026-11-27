@@ -11,7 +11,7 @@ MySQL, Elasticsearch, Redis, and Varnish so a pipeline needs only a single conta
 - **Bundled**: MySQL, Elasticsearch 7.x (+icu/+phonetic), Redis, Varnish, Composer, Node (nvm), n98-magerun2
 - **Testing**: custom Bash assertion runner (`tests/run-tests.sh`), run inside the container
 - **Linting**: hadolint (Dockerfile), shellcheck (shell scripts)
-- **CI**: GitHub Actions matrix → build, test, push to Docker Hub + ghcr.io
+- **CI**: GitHub Actions matrix → build and test per arch (amd64, arm64) → multi-arch push to ghcr.io
 
 ## Core Principles
 

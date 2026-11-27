@@ -33,12 +33,16 @@ Supervisord is the process manager (PID 1 via `CMD ["/usr/bin/supervisord", "-n"
 
 ## Build and Release Flow
 
-1. CI matrix builds one image per PHP version (7.1–8.5), `fail-fast: false`.
+1. CI matrix builds one image per PHP version (7.1–8.5) and architecture, `fail-fast: false`.
+   amd64 builds on `ubuntu-latest`, arm64 natively on `ubuntu-24.04-arm` (no QEMU).
+   Arch-specific downloads (Mailpit) branch on BuildKit's `TARGETARCH`.
 2. Each image is loaded locally and tested per variant: default, `ENABLE_VARNISH=true`,
    `ENABLE_MAILPIT=true`, `ENABLE_CORS=true`, and custom docroot/php-fpm overrides.
-3. On `main`, images are pushed to ghcr.io
-   (`ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image`),
-   tagged `<php-version>` and `php<NN>-fpm`. Docker Hub
+   The default run sets `EXPECTED_ARCH` so a wrong-arch build fails the suite.
+3. On `main`, each architecture is pushed by digest (untagged) to ghcr.io
+   (`ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-base-image`).
+   A `merge` job per PHP version then publishes the multi-arch tags `<php-version>`
+   and `php<NN>-fpm`, only when both architectures passed. Docker Hub
    (`michielgerritsen/magento2-base-image`) is deprecated and no longer updated.
 
 ## Conventions

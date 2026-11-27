@@ -6,7 +6,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG PHP_VERSION=8.2
 ARG NODE_VERSION=20
 ARG MAILPIT_VERSION=1.30.2
-ARG MAILPIT_SHA256=63b113aa9748adf7091b649ebe02693f99a459000cbe415faa6679f4b39f82cf
+ARG MAILPIT_SHA256_AMD64=63b113aa9748adf7091b649ebe02693f99a459000cbe415faa6679f4b39f82cf
+ARG MAILPIT_SHA256_ARM64=b159574f32e527f34624e5683f79859258360179268a8fac0f3030f74ca6bb96
+# Set by BuildKit from --platform (amd64 or arm64)
+ARG TARGETARCH
 
 LABEL org.opencontainers.image.description="Magento 2 base image with PHP, MySQL, Elasticsearch, and Redis for CI/CD pipelines"
 LABEL org.opencontainers.image.source="https://github.com/controlaltdelete-nl/magento2-docker-base-images"
@@ -189,7 +192,12 @@ RUN set -e; \
 
 # Install Mailpit (SMTP + web UI for mail testing)
 RUN set -e; \
-    MAILPIT_TARBALL="mailpit-linux-amd64.tar.gz"; \
+    case "$TARGETARCH" in \
+        amd64) MAILPIT_SHA256="$MAILPIT_SHA256_AMD64" ;; \
+        arm64) MAILPIT_SHA256="$MAILPIT_SHA256_ARM64" ;; \
+        *) echo "Unsupported TARGETARCH '${TARGETARCH}' for Mailpit" >&2; exit 1 ;; \
+    esac; \
+    MAILPIT_TARBALL="mailpit-linux-${TARGETARCH}.tar.gz"; \
     MAILPIT_URL="https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/${MAILPIT_TARBALL}"; \
     curl -fsSL "$MAILPIT_URL" -o "/tmp/${MAILPIT_TARBALL}" && \
     echo "${MAILPIT_SHA256}  /tmp/${MAILPIT_TARBALL}" | sha256sum -c - && \
