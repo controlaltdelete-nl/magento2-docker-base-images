@@ -22,13 +22,18 @@ ENV COMPOSER_VERSION=2
 # Install base packages, add third-party repos, then remove build-only dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        lsb-release ca-certificates curl wget gnupg2 software-properties-common \
+        lsb-release ca-certificates curl wget gnupg2 \
         supervisor openjdk-17-jre-headless apt-transport-https locales \
         unzip zip git jq patch ssh-client vim rsync && \
     locale-gen en_US.UTF-8 && \
     update-locale LANG=en_US.UTF-8 && \
-    # PHP (Ondřej Surý PPA)
-    add-apt-repository -y ppa:ondrej/php && \
+    # PHP (Ondřej Surý, packages.sury.org; ppa:ondrej/php is frozen since 2026-11-20)
+    curl -fsSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb && \
+    dpkg -i /tmp/debsuryorg-archive-keyring.deb && \
+    rm /tmp/debsuryorg-archive-keyring.deb && \
+    echo "deb [signed-by=/usr/share/keyrings/debsuryorg-archive-keyring.gpg] \
+        https://packages.sury.org/php/ $(lsb_release -sc) main" \
+        | tee /etc/apt/sources.list.d/php.list && \
     # Elasticsearch APT repo and key
     wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch \
         | gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg && \
@@ -42,7 +47,7 @@ RUN apt-get update && \
         https://packages.redis.io/deb $(lsb_release -cs) main" \
         | tee /etc/apt/sources.list.d/redis.list && \
     # Remove packages only needed for repo setup
-    apt-get purge -y --auto-remove gnupg2 software-properties-common && \
+    apt-get purge -y --auto-remove gnupg2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Supervisord

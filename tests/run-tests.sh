@@ -58,7 +58,11 @@ echo "== PHP =="
 
 if [ -n "$PHP_VERSION" ]; then
   assert_contains "PHP version matches $PHP_VERSION" "PHP $PHP_VERSION" php -v
+  assert_contains "PHP is installed from packages.sury.org" "debsuryorg" dpkg-query -W -f '${Version}' "php${PHP_VERSION}-fpm"
 fi
+
+assert_contains "PHP apt source points at packages.sury.org" "packages.sury.org/php" cat /etc/apt/sources.list.d/php.list
+assert "Frozen ondrej PPA is not configured" bash -c '! grep -rqs "ppa.launchpadcontent.net/ondrej" /etc/apt/sources.list /etc/apt/sources.list.d/'
 
 PHP_MODULES=$(php -m 2>/dev/null)
 for ext in bcmath curl gd intl mbstring mysql xml zip soap ftp xsl sockets exif; do
