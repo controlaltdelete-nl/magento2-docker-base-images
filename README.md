@@ -22,6 +22,8 @@ docker pull ghcr.io/controlaltdelete-nl/magento2-docker-base-images/magento2-bas
 | 7.2 | `7.2`, `php72-fpm` |
 | 7.1 | `7.1`, `php71-fpm` |
 
+Every tag is a multi-arch image for `linux/amd64` and `linux/arm64`, so Docker pulls the native variant on Apple Silicon and ARM CI runners without emulation.
+
 ## What's Included
 
 - **PHP** (with FPM) and common Magento extensions (bcmath, gd, intl, mbstring, mysql, xml, zip, soap, xsl, etc.)
